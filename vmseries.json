@@ -1,0 +1,339 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmCount": {
+       "type": "int",
+       "defaultValue": 2,
+       "metadata": {
+           "description": "Number of VM-Series firewall"
+       }
+    },
+    "vmName": {
+       "type": "string",
+       "metadata": {
+          "description": "Name of VM-Series VM in the Azure portal"
+       },
+       "defaultValue": "VM-Series"
+    },
+    "vmSize": {
+       "type": "string",
+       "allowedValues": [
+          "Standard_D3",
+          "Standard_D4",
+          "Standard_D3_v2",
+          "Standard_D4_v2",
+          "Standard_D5_v2",
+          "Standard_D14_v2", 
+          "Standard_A4"
+       ],
+       "metadata": {
+          "description": "Azure VM size for VM-Series"
+       },
+       "defaultValue": "Standard_D3"
+    },
+    "imageSku": {
+       "type": "string",
+       "allowedValues": [
+          "byol",
+          "bundle1",
+          "bundle2"
+       ],
+       "metadata": {
+          "description": "byol = Bring Your Own License; bundle1 = Bundle 1 PAYG (Hourly); bundle2 = Bundle 2 PAYG (Hourly)"
+       },
+       "defaultValue": "byol"
+    },
+    "virtualNetworkName": { 
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Network (VNET)"
+      },
+      "defaultValue": "fwVNET"
+    },
+    "virtualNetworkExistingRGName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of resource group of VNET (new or existing)"
+      }
+    },
+    "subnet0Name": {
+      "type": "string",
+      "defaultValue": "Mgmt",
+      "metadata": {
+        "description": "Subnet for Management"
+      }
+    },
+    "subnet1Name": {
+      "type": "string",
+      "defaultValue": "Untrust",
+      "metadata": {
+        "description": "Subnet for Untrust"
+      }
+    },
+    "subnet2Name": {
+      "type": "string",
+      "defaultValue": "Trust",
+      "metadata": {
+        "description": "Subnet for Trust"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Username of the administrator account of VM-Series"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Password for the administrator account of VM-Series"
+      }
+    },
+    "baseUrl": {
+      "type": "string",
+      "metadata": {
+        "artifactsBaseUrl": "",
+        "description": "URL to acquire other VM-Series for Azure templates"
+      }
+    },
+    "MgmtPublicIPAddressName": {
+      "type": "string",
+      "defaultValue": "vm-servies-pib-mgmt",
+      "metadata": {
+        "description": "Name of public IP resource for mgmt interface"
+      }
+    },
+    "Bootstrap": {
+      "type": "string",
+      "defaultValue" : "no",
+      "allowedValues": [
+        "yes",
+        "no"
+      ],
+      "metadata": {
+        "description": "Bootstrap disk yes or no"
+      }
+    },
+    "BootstrapUri": {
+      "type": "string",
+      "defaultValue" : "",
+      "metadata": {
+        "description": "Bootstrap disk storage account URI with container name"
+      }
+    },
+    "BootstrapUriSizeGB": {
+      "type": "string",
+      "defaultValue" : "1",
+      "metadata": {
+        "description": "Bootstrap disk disk in GB"
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "metadata": {
+          "description": "Type of administrator user authentication "
+      },
+      "allowedValues": [
+          "sshPublicKey",
+          "password"
+      ],
+      "defaultValue": "password"
+    },
+    "sshKey": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+          "description": "SSH rsa public key file as a string."
+      }
+    }
+  },
+  "variables": {
+    "availabilitySetName": "[concat('firewallAvSet', substring(uniqueString(resourceGroup().id), 0, 4))]",
+    "imagePublisher": "paloaltonetworks",
+    "imageOffer" : "vmseries1",
+    "nicName": "[parameters('vmName')]",
+    "publicIPAddressType": "Dynamic",
+    "SettingUpPublicIPUrl": "[concat(parameters('baseUrl'),'/publicip-new.json')]",
+    "setupNICsURL": "[concat(parameters('baseUrl'),'/setupNICS-new.json')]",
+    "vmTemplateUrl": "[concat(parameters('baseUrl'), '/virtual-machine-', parameters('authenticationType'),'-bs-', parameters('Bootstrap'), '.json')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[variables('availabilitySetName')]",
+      "apiVersion": "2017-03-30",
+      "location": "[resourceGroup().location]",
+      "properties": {
+          "platformFaultDomainCount": 3,
+          "platformUpdateDomainCount": 3
+      },
+      "sku": {
+          "name": "Aligned"
+      }
+    },
+    {
+      "name": "[concat('SettingUpPublicIPs', copyindex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "copy": {
+          "name": "SettingUpPublicIPsLoop",
+          "count": "[parameters('vmCount')]"
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('SettingUpPublicIPUrl')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "MgmtPublicIPAddressName": {
+            "value": "[concat(parameters('MgmtPublicIPAddressName'),copyindex())]"
+          },
+          "publicIPAddressType": {
+            "value": "[variables('publicIPAddressType')]"
+          },
+          "baseUrl": {
+            "value": "[parameters('baseUrl')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('SetupNetworkInterfaces', copyindex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "SettingUpPublicIPsLoop"
+      ],
+      "copy": {
+          "name": "NetworkInterfaceLoop",
+          "count": "[parameters('vmCount')]"
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('setupNICsURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "nicName": {
+            "value": "[concat(variables('nicName'), copyindex())]"
+          },
+          "subnet0Name": {
+            "value": "[parameters('subnet0Name')]"
+          },
+          "subnet1Name": {
+            "value": "[parameters('subnet1Name')]"
+          },
+          "subnet2Name": {
+            "value": "[parameters('subnet2Name')]"
+          },
+          "virtualNetworkName": {
+            "value": "[parameters('virtualNetworkName')]"
+          },
+          "virtualNetworkExistingRGName": {
+            "value": "[parameters('virtualNetworkExistingRGName')]"
+          },
+          "MgmtPublicIPAddressName": {
+            "value": "[concat(parameters('MgmtPublicIPAddressName'), copyindex())]"
+          },
+          "baseUrl": {
+            "value": "[parameters('baseUrl')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat('VMSeries-Firewall-VM', copyindex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "SettingUpPublicIPsLoop",
+        "NetworkInterfaceLoop",
+        "[concat('Microsoft.Compute/availabilitySets/', variables('availabilitySetName'))]"
+      ],
+      "copy": {
+          "name": "VirtualMachineLoop",
+          "count": "[parameters('vmCount')]"
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmTemplateUrl')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "vmName": {
+            "value": "[concat(parameters('vmName'), copyindex())]"
+          },
+          "availabilitySetName": {
+            "value": "[variables('availabilitySetName')]"
+          },
+          "imageSku": {
+            "value": "[parameters('imageSku')]"
+          },
+          "imageOffer": {
+            "value": "[variables('imageOffer')]"
+          },
+          "imagePublisher": {
+            "value": "[variables('imagePublisher')]"
+          },
+          "nicName": {
+            "value": "[concat(variables('nicName'), copyindex())]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "sshKey": {
+            "value": "[parameters('sshKey')]"
+          },
+          "BootstrapUri": {
+            "value": "[parameters('BootstrapUri')]"
+          },
+          "BootstrapUriSizeGB": {
+            "value": "[parameters('BootstrapUriSizeGB')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "UntrustPrivateIPAddress1": {
+      "value": "[reference('SetupNetworkInterfaces0').outputs.UntrustPrivateIPAddress.value]",
+      "type": "string"
+    },
+    "UntrustPrivateIPAddress2": {
+      "value": "[reference('SetupNetworkInterfaces1').outputs.UntrustPrivateIPAddress.value]",
+      "type": "string"
+    },
+    "UntrustPrivateIPAddresses": {
+      "value": [
+        {
+          "IpAddress": "[reference('SetupNetworkInterfaces0').outputs.UntrustPrivateIPAddress.value]"
+        },
+        {
+          "IpAddress": "[reference('SetupNetworkInterfaces1').outputs.UntrustPrivateIPAddress.value]"
+        }
+      ],
+      "type": "array"
+    }
+  }
+}

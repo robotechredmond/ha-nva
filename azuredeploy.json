@@ -1,0 +1,182 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "defaultValue": "vnet-FW",
+      "metadata": {
+        "description": "Name of existing Virtual Network"
+      }
+    },
+    "existingVirtualNetworkRGName": {
+        "type": "string",
+        "defaultValue": "vnet-rg",
+        "metadata": {
+          "description": "Name of Resource Group for existing Virtual Network"
+        }
+    },
+    "existingMgmtSubnetName": {
+      "type": "string",
+      "defaultValue": "Mgmt",
+      "metadata": {
+        "description": "Subnet for Management Network"
+      }
+    },
+    "existingUntrustedSubnetName": {
+      "type": "string",
+      "defaultValue": "Untrust",
+      "metadata": {
+        "description": "Subnet for Untrusted Network"
+      }
+    },
+    "existingTrustedSubnetName": {
+      "type": "string",
+      "defaultValue": "Trust",
+      "metadata": {
+        "description": "Subnet for Trusted Network"
+      }
+    },
+    "firewallModel": {
+       "type": "string",
+       "defaultValue": "byol",
+       "allowedValues": [
+          "byol",
+          "bundle1",
+          "bundle2"
+       ],
+       "metadata": {
+           "description": "byol = Bring Your Own License; bundle1 = Bundle 1 PAYG (Hourly); bundle2 = Bundle 2 PAYG (Hourly)"
+       }
+    },
+    "firewallVmName": {
+       "type": "string",
+       "metadata": {
+          "description": "Name prefix of VM-Series VM in the Azure portal"
+       },  
+       "defaultValue": "VM-Series"
+    },
+    "firewallVmSize": {
+       "type": "string",
+       "allowedValues": [
+          "Standard_D3",
+          "Standard_D4",
+          "Standard_D3_v2",
+          "Standard_D4_v2",
+          "Standard_D5_v2",
+          "Standard_D14_v2",
+          "Standard_A4"
+       ],
+       "metadata": {
+          "description": "Azure VM size for VM-Series"
+       },
+       "defaultValue": "Standard_D3"
+    },
+    "MgmtPublicIPAddressName": {
+      "type": "string",
+      "metadata": {
+        "description": "DNS Name prefix of public IP resource for Management interface of VM-Series firewall.  Name must be globally unique."
+      }
+    },
+    "username": {
+      "type": "string",
+      "metadata": {
+        "description": "Username of the administrator account of VM instances"
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "metadata": {
+        "description": "Type of administrator user authentication "
+      },
+      "allowedValues": [
+        "sshPublicKey",
+        "password"
+      ],
+      "defaultValue": "password"
+    },
+    "password": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Password for the administrator account of all VM instances. Must be specified if Authentication Type is 'password'."
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "SSH RSA public key file as a string. Must be specified if Authentication Type is 'sshPublicKey'."
+      }
+    }
+  },
+  "variables": {
+    "firewallVmCount" : 2,
+    "baseUrl" : "https://raw.githubusercontent.com/robotechredmond/ha-nva/master/",
+    "vmseriesURL" : "[concat(variables('baseUrl'),'/vmseries.json')]"
+  },
+  "resources": [
+     {
+      "name": "SetupVMSeries",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmseriesURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vmCount": {
+               "value": "[variables('firewallVmCount')]"
+          },
+          "vmName": {
+               "value": "[parameters('firewallVmName')]"
+          },
+          "imageSku": {
+               "value": "[parameters('firewallModel')]"
+          },
+          "vmSize": {
+               "value": "[parameters('firewallVmSize')]"
+          },
+          "virtualNetworkName": {
+               "value": "[parameters('existingVirtualNetworkName')]"
+          },
+          "virtualNetworkExistingRGName": {
+               "value": "[parameters('existingVirtualNetworkRGName')]"
+          },
+          "subnet0Name": {
+               "value": "[parameters('existingMgmtSubnetName')]"
+          },
+          "subnet1Name": {
+               "value": "[parameters('existingUntrustedSubnetName')]"
+          },
+          "subnet2Name": {
+               "value": "[parameters('existingTrustedSubnetName')]"
+          },
+          "adminUsername": {
+               "value": "[parameters('username')]"
+          },
+          "adminPassword": {
+               "value": "[parameters('password')]"
+          },
+          "baseUrl": {
+               "value": "[variables('baseUrl')]"
+          },
+          "MgmtPublicIPAddressName": {
+               "value": "[parameters('MgmtPublicIPAddressName')]"
+          },
+          "authenticationType": {
+               "value": "[parameters('authenticationType')]"
+          },
+          "sshKey": {
+               "value": "[parameters('sshPublicKey')]"
+          }
+        }
+       }
+     }
+  ],
+  "outputs": {
+  }
+}
