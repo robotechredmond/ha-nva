@@ -12,9 +12,9 @@
     "vmName": {
        "type": "string",
        "metadata": {
-          "description": "Name of VM-Series VM in the Azure portal"
+          "description": "Unique prefix name for VM-Series VMs in the Azure portal"
        },
-       "defaultValue": "VM-Series"
+       "defaultValue": "pan01-fw"
     },
     "vmSize": {
        "type": "string",
@@ -49,32 +49,32 @@
       "metadata": {
         "description": "Name of the Virtual Network (VNET)"
       },
-      "defaultValue": "fwVNET"
+      "defaultValue": "pan01-vnet"
     },
     "virtualNetworkExistingRGName": {
       "type": "string",
-      "defaultValue": "",
+      "defaultValue": "pan01-vnet-rg",
       "metadata": {
         "description": "Name of resource group of VNET (new or existing)"
       }
     },
     "subnet0Name": {
       "type": "string",
-      "defaultValue": "Mgmt",
+      "defaultValue": "mgmt",
       "metadata": {
         "description": "Subnet for Management"
       }
     },
     "subnet1Name": {
       "type": "string",
-      "defaultValue": "Untrust",
+      "defaultValue": "untrust",
       "metadata": {
         "description": "Subnet for Untrust"
       }
     },
     "subnet2Name": {
       "type": "string",
-      "defaultValue": "Trust",
+      "defaultValue": "trust",
       "metadata": {
         "description": "Subnet for Trust"
       }
@@ -101,7 +101,7 @@
     },
     "MgmtPublicIPAddressName": {
       "type": "string",
-      "defaultValue": "vm-servies-pib-mgmt",
+      "defaultValue": "pan01-fw-pip",
       "metadata": {
         "description": "Name of public IP resource for mgmt interface"
       }
@@ -151,7 +151,7 @@
     }
   },
   "variables": {
-    "availabilitySetName": "[concat('firewallAvSet', substring(uniqueString(resourceGroup().id), 0, 4))]",
+    "availabilitySetName": "[concat(parameters('vmName'), '-as')]",
     "imagePublisher": "paloaltonetworks",
     "imageOffer" : "vmseries1",
     "nicName": "[parameters('vmName')]",

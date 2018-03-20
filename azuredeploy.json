@@ -4,35 +4,35 @@
   "parameters": {
     "existingVirtualNetworkName": {
       "type": "string",
-      "defaultValue": "vnet-FW",
+      "defaultValue": "pan01-vnet",
       "metadata": {
         "description": "Name of existing Virtual Network"
       }
     },
     "existingVirtualNetworkRGName": {
         "type": "string",
-        "defaultValue": "vnet-rg",
+        "defaultValue": "pan01-vnet-rg",
         "metadata": {
           "description": "Name of Resource Group for existing Virtual Network"
         }
     },
     "existingMgmtSubnetName": {
       "type": "string",
-      "defaultValue": "Mgmt",
+      "defaultValue": "mgmt",
       "metadata": {
         "description": "Subnet for Management Network"
       }
     },
     "existingUntrustedSubnetName": {
       "type": "string",
-      "defaultValue": "Untrust",
+      "defaultValue": "untrust",
       "metadata": {
         "description": "Subnet for Untrusted Network"
       }
     },
     "existingTrustedSubnetName": {
       "type": "string",
-      "defaultValue": "Trust",
+      "defaultValue": "trust",
       "metadata": {
         "description": "Subnet for Trusted Network"
       }
@@ -54,7 +54,7 @@
        "metadata": {
           "description": "Name prefix of VM-Series VM in the Azure portal"
        },  
-       "defaultValue": "VM-Series"
+       "defaultValue": "pan01-fw"
     },
     "firewallVmSize": {
        "type": "string",
@@ -74,6 +74,7 @@
     },
     "MgmtPublicIPAddressName": {
       "type": "string",
+      "defaultValue": "pan01-fw-pip",
       "metadata": {
         "description": "DNS Name prefix of public IP resource for Management interface of VM-Series firewall.  Name must be globally unique."
       }
