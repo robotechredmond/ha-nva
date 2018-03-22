@@ -167,7 +167,7 @@
       "apiVersion": "2017-03-30",
       "location": "[resourceGroup().location]",
       "properties": {
-          "platformFaultDomainCount": 3,
+          "platformFaultDomainCount": 2,
           "platformUpdateDomainCount": 3
       },
       "sku": {
